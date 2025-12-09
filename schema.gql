@@ -1,0 +1,340 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AuthPayload {
+  accessToken: String!
+}
+
+type User {
+  id: ID!
+  businessId: ID!
+  name: String!
+  email: String!
+  password: String
+  role: String!
+  lastLogin: DateTime
+  status: String!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type OrderItem {
+  id: ID!
+  orderId: ID!
+  productId: ID!
+  quantity: Int!
+  unitPrice: Float!
+  total: Float!
+  note: String
+}
+
+type Order {
+  id: ID!
+  tableId: ID!
+  userId: ID!
+  status: String!
+  subtotal: Float!
+  tax: Float!
+  total: Float!
+  tip: Float!
+  discount: Float!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  items: [OrderItem!]!
+}
+
+type Product {
+  id: ID!
+  businessId: ID!
+  name: String!
+  description: String!
+  price: Float!
+  available: Boolean!
+  category: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Table {
+  id: ID!
+  floorId: ID!
+  name: String!
+  coordX: Float!
+  coordY: Float!
+  capacity: Int!
+  status: String!
+  shape: String!
+  color: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Floor {
+  id: ID!
+  businessId: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  tables: [Table!]
+}
+
+type Business {
+  id: ID!
+  clientId: ID!
+  name: String!
+  address: String!
+  phone: String!
+  currency: String!
+  taxRate: Float!
+  maxTables: Int!
+  floors: [Floor!]!
+  theme: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  status: String!
+}
+
+type Client {
+  id: ID!
+  name: String!
+  email: String!
+  password: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  status: String!
+  businesses: [Business!]
+}
+
+type Query {
+  """Obtiene todos los empleados de un negocio"""
+  usersByBusiness(businessId: String!): [User!]!
+  order(id: ID!): Order!
+  allOrders(tableId: String!): [Order!]!
+  products(businessId: ID!): [Product!]!
+  product(id: ID!): Product!
+  table(idBusiness: ID!): [Table!]!
+  getAuthenticatedClient: Client!
+  business(id: ID!): Business!
+}
+
+type Mutation {
+  loginClient(input: AuthInput!): AuthPayload!
+  loginUser(input: AuthInput!): AuthPayload!
+  createUser(input: CreateUserInput!): User!
+  updateUser(input: UpdateUserInput!): User!
+  deleteUser(input: DeleteUserInput!): ID!
+  createOrder(input: CreateOrderInput!): Order!
+  updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+  deleteOrder(input: DeleteOrderInput!): ID!
+  createProduct(input: CreateProductInput!): Product!
+  updateProduct(input: UpdateProductInput!): Product!
+  deleteProduct(input: DeleteProductInput!): ID!
+  createTables(input: CreateTablesBatchInput!): [Table!]!
+  manageFloorTables(input: TableBatchUpdateInput!): Boolean!
+  updateTable(input: UpdateTableInput!): Table!
+  deleteTable(input: DeleteTableInput!): ID!
+  createClient(input: CreateClientInput!): Client!
+  updateClient(input: UpdateClientInput!): Client!
+  deleteClient(input: DeleteClientInput!): ID!
+  createBusiness(input: CreateBusinessInput!): Business!
+  updateBusiness(input: UpdateBusinessInput!): Business!
+  deleteBusiness(input: DeleteBusinessInput!): ID!
+  createFloor(createFloorInput: CreateFloorInput!): Floor!
+  updateFloor(updateFloorInput: UpdateFloorInput!): Floor!
+  deleteFloor(deleteFloorInput: DeleteFloorInput!): Floor!
+}
+
+input AuthInput {
+  email: String!
+  password: String!
+}
+
+input CreateUserInput {
+  businessId: ID!
+  name: String!
+  email: String!
+  password: String!
+  role: String!
+}
+
+input UpdateUserInput {
+  id: ID!
+  name: String
+  email: String
+  password: String
+  role: String
+  status: String
+}
+
+input DeleteUserInput {
+  id: ID!
+}
+
+input CreateOrderInput {
+  tableId: ID!
+  userId: ID!
+  tip: Float! = 0
+  discount: Float! = 0
+  items: [CreateOrderItemInput!]!
+}
+
+input CreateOrderItemInput {
+  productId: ID!
+  quantity: Int!
+  note: String
+}
+
+input UpdateOrderStatusInput {
+  id: ID!
+  newStatus: String!
+  userId: ID!
+}
+
+input DeleteOrderInput {
+  id: ID!
+}
+
+input CreateProductInput {
+  businessId: ID!
+  name: String!
+  description: String!
+  price: Float!
+  available: Boolean!
+  category: String!
+}
+
+input UpdateProductInput {
+  id: ID!
+  name: String
+  description: String
+  price: Float
+  available: Boolean
+  category: String
+}
+
+input DeleteProductInput {
+  id: ID!
+}
+
+input CreateTablesBatchInput {
+  floorId: ID!
+  tables: [TableDataInput!]!
+}
+
+input TableDataInput {
+  name: String!
+  coordX: Float!
+  coordY: Float!
+  capacity: Int!
+  shape: String!
+  color: String!
+  status: String!
+}
+
+input TableBatchUpdateInput {
+  """ID del Floor (Plano) que se está editando."""
+  floorId: String!
+
+  """Nuevas mesas a crear."""
+  tablesToCreate: [CreateTableInput!]
+
+  """Mesas existentes a actualizar (principalmente coordenadas)."""
+  tablesToUpdate: [UpdateTableInputArr!]
+
+  """IDs de las mesas a eliminar."""
+  tableIdsToDelete: [String!]
+}
+
+input CreateTableInput {
+  floorId: String!
+  name: String!
+  coordX: Float!
+  coordY: Float!
+  capacity: Float!
+  shape: String!
+  color: String!
+}
+
+input UpdateTableInputArr {
+  id: String!
+}
+
+input UpdateTableInput {
+  id: ID!
+  name: String
+  coordX: Float
+  coordY: Float
+  capacity: Int
+  status: String
+  shape: String
+  color: String
+  floorId: ID
+}
+
+input DeleteTableInput {
+  id: ID!
+}
+
+input CreateClientInput {
+  name: String!
+  email: String!
+  password: String!
+}
+
+input UpdateClientInput {
+  id: ID!
+  name: String
+  email: String
+  password: String
+  status: String
+}
+
+input DeleteClientInput {
+  id: ID!
+}
+
+input CreateBusinessInput {
+  name: String!
+  address: String!
+  phone: String!
+  currency: String!
+  taxRate: Float!
+  maxTables: Int!
+  theme: String
+}
+
+input UpdateBusinessInput {
+  id: ID!
+  name: String
+  address: String
+  phone: String
+  currency: String
+  taxRate: Float
+  maxTables: Int
+  theme: String
+  status: String
+}
+
+input DeleteBusinessInput {
+  id: ID!
+}
+
+input CreateFloorInput {
+  businessId: ID!
+  name: String!
+}
+
+input UpdateFloorInput {
+  id: ID!
+  name: String
+}
+
+input DeleteFloorInput {
+  id: ID!
+}

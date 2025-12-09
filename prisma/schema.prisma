@@ -1,0 +1,206 @@
+
+
+// ... (Client se mantiene igual)
+
+
+
+// NUEVO MODELO: PLANO / PISO
+
+
+// ... (El resto de modelos: User, Product, Order, etc. se mantienen igual)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id               String     @id @default(uuid())
+  name             String
+  email            String     @unique
+  password         String
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  status           String
+  businesses       Business[]
+}
+
+
+
+model User {
+  id               String        @id @default(uuid())
+  businessId       String
+  name             String
+  email            String        @unique
+  password         String
+  role             String
+  lastLogin        DateTime?
+  status           String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  business         Business      @relation(fields: [businessId], references: [id])
+  orders           Order[]
+  orderHistories   OrderHistory[]
+  chats            Chat[]        @relation("ChatSender")
+}
+
+// ... (Client se mantiene igual)
+
+model Business {
+  id               String        @id @default(uuid())
+  clientId         String
+  name             String
+  address          String
+  phone            String
+  currency         String
+  taxRate          Float
+  maxTables        Int
+  theme            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  status           String
+  
+  client           Client        @relation(fields: [clientId], references: [id])
+  users            User[]
+  
+  // CAMBIO AQUÍ: El negocio ahora tiene 'floors' (Planos/Pisos)
+  floors           Floor[]       
+  
+  // Eliminamos 'tables Table[]' directo
+  products         Product[]
+  chats            Chat[]
+  notifications    Notification[]
+}
+
+// NUEVO MODELO: PLANO / PISO
+model Floor {
+  id               String        @id @default(uuid())
+  businessId       String
+  name             String        // Ej: "Terraza", "Salón Principal"
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  // Relaciones
+  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tables           Table[]       // Un plano tiene muchas mesas
+}
+
+model Table {
+  id               String        @id @default(uuid())
+  
+  // CAMBIO AQUÍ: Ahora se vincula al Floor, no al Business
+  floorId          String        
+  
+  name             String
+  coordX           Float
+  coordY           Float
+  capacity         Int
+  status           String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  shape        String        // Ej: "circle", "rectangle" 
+  color      String        // Ej: "#FF5733"
+  // Relación con Floor
+  floor            Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  
+  // Se elimina la relación directa con Business
+  // businessId    String  <-- Eliminado
+  // business      Business <-- Eliminado
+  
+  orders           Order[]
+}
+
+model Product {
+  id               String        @id @default(uuid())
+  businessId       String
+  name             String
+  description      String
+  price            Float
+  available        Boolean
+  category         String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  business         Business      @relation(fields: [businessId], references: [id])
+  orderItems       OrderItem[]
+}
+
+model Order {
+  id               String        @id @default(uuid())
+  tableId          String
+  userId           String
+  status           String
+  subtotal         Float
+  tax              Float
+  total            Float
+  tip              Float
+  discount         Float
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  table            Table         @relation(fields: [tableId], references: [id])
+  user             User          @relation(fields: [userId], references: [id])
+  items            OrderItem[]
+  histories        OrderHistory[]
+}
+
+model OrderItem {
+  id               String        @id @default(uuid())
+  orderId          String
+  productId        String
+  quantity         Int
+  unitPrice        Float
+  total            Float
+  note             String?
+
+  order            Order         @relation(fields: [orderId], references: [id])
+  product          Product       @relation(fields: [productId], references: [id])
+}
+
+model OrderHistory {
+  id               String        @id @default(uuid())
+  orderId          String
+  previousStatus   String
+  newStatus        String
+  userId           String
+  changedAt        DateTime      @default(now())
+
+  order            Order         @relation(fields: [orderId], references: [id])
+  user             User          @relation(fields: [userId], references: [id])
+}
+
+model Chat {
+  id               String        @id @default(uuid())
+  businessId       String
+  senderId         String
+  message          String
+  type             String
+  sentAt           DateTime      @default(now())
+  read             Boolean       @default(false)
+
+  business         Business      @relation(fields: [businessId], references: [id])
+  sender           User          @relation("ChatSender", fields: [senderId], references: [id])
+}
+
+model Notification {
+  id               String        @id @default(uuid())
+  businessId       String
+  type             String
+  message          String
+  createdAt        DateTime      @default(now())
+  read             Boolean       @default(false)
+
+  business         Business      @relation(fields: [businessId], references: [id])
+}
+
+model SyncLog {
+  id               String        @id @default(uuid())
+  entity           String
+  entityId         String
+  operation        String
+  dataJson         String
+  createdAt        DateTime      @default(now())
+}

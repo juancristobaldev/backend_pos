@@ -7,6 +7,7 @@ import {
   CreateClientInput,
   UpdateClientInput,
   DeleteClientInput,
+  OutputClient,
 } from '../../entitys/client.entity';
 import {
   BadRequestException,
@@ -16,11 +17,13 @@ import {
 import { RoleGuard } from 'src/guards/auth/auth.guard';
 import { Role, Roles } from 'src/common/decorators/roles.decorators';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Resolver(() => Client)
 export class ClientResolver {
   constructor(
     private readonly clientService: ClientService,
+    private readonly prisma:PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -41,12 +44,16 @@ export class ClientResolver {
       businesses: true,
     });
 
+
+
     return client;
   }
 
-  @Mutation(() => Client, { name: 'createClient' })
-  async createClient(@Args('input') input: CreateClientInput): Promise<Client> {
-    return this.clientService.create(input);
+  @Mutation(() => OutputClient, { name: 'createClient' })
+  async createClient(@Args('input') input: CreateClientInput): Promise<OutputClient> {
+    const {name,email,password,saleToken} = input
+    
+    return this.clientService.create({name,email,password}, saleToken);
   }
 
   // 2. MUTACIÓN: ACTUALIZAR CLIENTE

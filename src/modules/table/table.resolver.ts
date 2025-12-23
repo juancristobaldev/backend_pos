@@ -8,6 +8,7 @@ import {
   UpdateTableInput,
   DeleteTableInput,
   TableBatchUpdateInput,
+  ChangeTableStatusInput,
 } from '../../entitys/table.entity';
 import { NotFoundException } from '@nestjs/common';
 
@@ -15,6 +16,15 @@ import { NotFoundException } from '@nestjs/common';
 export class TableResolver {
   constructor(private readonly tableService: TableService) {}
 
+// table.resolver.ts
+@Mutation(() => Table)
+async changeTableStatus(
+  @Args('input') input: ChangeTableStatusInput,
+): Promise<Table> {
+  return this.tableService.changeStatus(input.tableId, input.newStatus);
+}
+
+  
   // 1. MUTACIÓN: CREAR MESA
   @Mutation(() => [Table])
   async createTables(@Args('input') input: CreateTablesBatchInput) {

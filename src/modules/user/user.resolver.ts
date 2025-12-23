@@ -7,13 +7,26 @@ import {
   CreateUserInput,
   UpdateUserInput,
   DeleteUserInput,
+  OutputUser,
+  EmployeeStatus,
 } from '../../entitys/user.entity';
 import { NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 // Definimos que este Resolver manejará el tipo de salida 'User'
-@Resolver(() => User)
+@Resolver()
 export class UserResolver {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService, private readonly prismaService:PrismaService) {}
+
+  @Query(() => OutputUser)
+  async getUser(
+    @Args('userId') userId: string,
+  ): Promise<OutputUser> {
+
+ 
+    return await this.userService.findOne(userId);
+
+  }
 
   @Query(() => [User], {
     name: 'usersByBusiness',

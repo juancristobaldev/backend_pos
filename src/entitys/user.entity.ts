@@ -1,41 +1,86 @@
 // user.entity.ts
-import { ObjectType, Field, InputType, ID } from '@nestjs/graphql';
+import {
+  ObjectType,
+  Field,
+  InputType,
+  ID,
+  registerEnumType,
+} from '@nestjs/graphql';
 import { User as PrismaUser } from '@prisma/client';
 
-@ObjectType()
-export class User implements PrismaUser {
-  @Field(() => ID)
-  id: string;
-  @Field(() => ID)
-  businessId: string; // ID del negocio al que pertenece
-  @Field()
-  name: string;
-  @Field()
-  email: string;
-  @Field({ nullable: true })
-  password: string; // Nota: En una app real, nunca se debe devolver el password.
-  @Field()
-  role: string;
-  @Field(() => Date, { nullable: true })
-  lastLogin: Date | null;
-  @Field()
-  status: string;
-  @Field(() => Date, { nullable: true })
-  createdAt: Date; // Opcional en TypeScript
-  @Field(() => Date, { nullable: true })
-  updatedAt: Date;
+/* --------------------------------------------------------
+ * 1. ENUM: ESTADOS DE EMPLEADO
+ * -------------------------------------------------------- */
 
-  // No incluimos 'business', 'orders', etc., aquí, a menos que se definan sus Resolvers
+export enum EmployeeStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
 }
 
-// --------------------------------------------------------
-// 2. INPUT TYPES (Datos de entrada para las Mutaciones)
-// --------------------------------------------------------
+registerEnumType(EmployeeStatus, {
+  name: 'EmployeeStatus',
+  description: 'Estados posibles de un empleado',
+});
+
+/* --------------------------------------------------------
+ * 2. ENTITY: USER
+ * -------------------------------------------------------- */
+
+@ObjectType()
+export class User  {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  businessId: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  email: string;
+
+  // ⚠️ Nunca se debería exponer en producción real
+  @Field({ nullable: true })
+  password: string;
+
+  @Field()
+  role: string;
+
+  @Field(() => Date, { nullable: true })
+  lastLogin: Date | null;
+
+  @Field(() => EmployeeStatus)
+  status: EmployeeStatus;
+
+  @Field(() => Date, { nullable: true })
+  createdAt: Date;
+
+  @Field(() => Date, { nullable: true })
+  updatedAt: Date;
+}
+
+
+@ObjectType()
+export class OutputUser  {
+  @Field(()=> Boolean)
+  success: boolean;
+  @Field({nullable:true})
+  errors?: string;
+  @Field(()=> User,{nullable:true})
+  user?: User;
+
+}
+
+/* --------------------------------------------------------
+ * 3. INPUT TYPES
+ * -------------------------------------------------------- */
 
 @InputType()
 export class CreateUserInput {
   @Field(() => ID)
-  businessId: string; // Requerido para crear el usuario
+  businessId: string;
 
   @Field()
   name: string;
@@ -49,13 +94,13 @@ export class CreateUserInput {
   @Field()
   role: string;
 
-  // NOTA: 'status' y 'lastLogin' se gestionan generalmente en el Service
+  // status se define en el service (default: ACTIVE)
 }
 
 @InputType()
 export class UpdateUserInput {
   @Field(() => ID)
-  id: string; // ID es necesario para el 'where' en la actualización
+  id: string;
 
   @Field({ nullable: true })
   name?: string;
@@ -69,11 +114,10 @@ export class UpdateUserInput {
   @Field({ nullable: true })
   role?: string;
 
-  @Field({ nullable: true })
-  status?: string; // Permite actualizar el estado (e.g., 'Inactive')
+  @Field(() => EmployeeStatus, { nullable: true })
+  status?: EmployeeStatus;
 }
 
-// Input simple para la eliminación, solo necesita el ID
 @InputType()
 export class DeleteUserInput {
   @Field(() => ID)

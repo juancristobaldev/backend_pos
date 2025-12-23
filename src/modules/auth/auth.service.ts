@@ -34,18 +34,20 @@ export class AuthService {
 
     // 1. Buscar el usuario (empleado) en la base de datos
     const user = await this.prisma.user.findUnique({ where: { email } });
-
-    if (user && user.status !== 'Active') {
+    console.log(user)
+    if (user && user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User account is inactive.');
     }
 
     // 2. Verificar la contraseña
     // Nota: Asume que las contraseñas están hasheadas en la DB.
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (user && password === user.password) {
       // 3. Generar el payload JWT
       const payload = {
+        id:user.id,
         email: user.email,
         role: user.role,
+        businessId:user.businessId
       };
       return this.generateToken(payload);
     }

@@ -24,6 +24,52 @@ export class TableService {
    * @param input Datos de la mesa (CreateTableInput).
    * @returns El objeto Table recién creado.
    */
+// table.service.ts
+async changeStatus(tableId: string, newStatus: string): Promise<Table> {
+  const table = await this.prisma.table.findUnique({
+    where: { id: tableId },
+    include: {
+      orders: {
+        where: { status: { not: 'PAID' } },
+      },
+    },
+  });
+
+  if (!table) throw new NotFoundException('Mesa no encontrada');
+
+  // ❌ Mesa deshabilitada
+  if (table.status === 'DISABLED') {
+    throw new BadRequestException('Mesa deshabilitada');
+  }
+
+  // ❌ No permitir pasar a PAID sin orden
+  if (newStatus === 'PAID' && table.orders.length === 0) {
+    throw new BadRequestException('No se puede marcar como pagada sin una orden');
+  }
+
+  // ❌ AVAILABLE → PAID directo
+  if (table.status === 'AVAILABLE' && newStatus === 'PAID') {
+    throw new BadRequestException('Debe estar ocupada antes de pagar');
+  }
+
+  // ✅ Transiciones válidas
+  const allowedTransitions: Record<string, string[]> = {
+    AVAILABLE: ['OCCUPIED'],
+    OCCUPIED: ['AVAILABLE', 'PAID'],
+    PAID: ['AVAILABLE'], // <-- permitimos liberar la mesa después de pagar
+  };
+
+  if (!allowedTransitions[table.status]?.includes(newStatus)) {
+    throw new BadRequestException(`Transición inválida: ${table.status} → ${newStatus}`);
+  }
+
+  return this.prisma.table.update({
+    where: { id: tableId },
+    data: { status: newStatus },
+  });
+}
+
+
 
   async processBatchUpdate(input: TableBatchUpdateInput): Promise<void> {
     const { floorId, tablesToCreate, tablesToUpdate, tableIdsToDelete } = input;
@@ -41,7 +87,7 @@ export class TableService {
       const createData = tablesToCreate.map((table) => ({
         ...table,
         floorId: floorId, // Aseguramos que todas las nuevas mesas pertenezcan al floorId del input
-        status: 'Disponible', // Estado por defecto
+        status: 'AVAILABLE', // Estado por defecto
         // coordX, coordY, name, capacity, shape, color ya vienen en el input
       }));
 
@@ -139,8 +185,7 @@ export class TableService {
             coordX: tableData.coordX,
             coordY: tableData.coordY,
             capacity: tableData.capacity,
-            status: tableData.status || 'Available', // Default por seguridad
-
+            status: "AVAILABLE" ,
             // Datos de visualización
             shape: tableData.shape,
             color: tableData.color,

@@ -12,28 +12,39 @@ export class Product {
   @Field(() => ID)
   businessId: string;
 
-  @Field()
-  name: string;
+  @Field({nullable:true})
+  name?: string;
 
-  @Field()
-  description: string;
+  @Field({nullable:true})
+  description?: string;
 
-  @Field(() => Float)
-  price: number;
+  @Field(() => Float,{nullable:true})
+  price?: number;
 
-  @Field()
-  available: boolean;
+  @Field({nullable:true})
+  available?: boolean;
 
-  @Field()
-  category: string;
+  @Field({nullable:true})
+  category?: string;
 
-  @Field()
-  createdAt: Date;
+  @Field({nullable:true})
+  createdAt?: Date;
 
-  @Field()
-  updatedAt: Date;
+  @Field({nullable:true})
+  updatedAt?: Date;
 }
 
+
+@ObjectType()
+export class OutputProduct  {
+  @Field(()=> Boolean)
+  success: boolean;
+  @Field({nullable:true})
+  errors?: string;
+  @Field(()=> Product,{nullable:true})
+  product?: Product;
+
+}
 // 2. INPUT PARA CREACIÓN
 @InputType()
 export class CreateProductInput {

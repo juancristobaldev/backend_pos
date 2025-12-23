@@ -1,30 +1,24 @@
-// order.service.ts
-
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  InternalServerErrorException,
 } from '@nestjs/common';
-import { OrderItem, Prisma } from '@prisma/client'; // Tipos de salida de Prisma
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  Order,
   CreateOrderInput,
   CreateOrderItemInput,
   UpdateOrderStatusInput,
 } from 'src/entitys/order.entity';
-// Asumimos que los Inputs están definidos en order.entity.ts
-// import { CreateOrderInput, UpdateOrderStatusInput, CreateOrderItemInput } from './order.entity';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Método auxiliar para calcular subtotal, impuestos y total.
-   * Busca los precios de los productos y aplica los cálculos.
-   */
+  /* =========================
+     HELPERS
+  ========================= */
+
   private async calculateOrderTotals(
     businessId: string,
     items: CreateOrderItemInput[],
@@ -32,22 +26,20 @@ export class OrderService {
     subtotal: number;
     tax: number;
     total: number;
-    orderItemsData: any[];
+    orderItemsData: Prisma.OrderItemCreateWithoutOrderInput[];
   }> {
     let subtotal = 0;
-    const orderItemsData: any[] = [];
+    const orderItemsData: Prisma.OrderItemCreateWithoutOrderInput[] = [];
 
-    // 1. Obtener el porcentaje de impuestos del negocio
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
       select: { taxRate: true },
     });
 
     if (!business) {
-      throw new NotFoundException(`Business with ID ${businessId} not found.`);
+      throw new NotFoundException(`Business ${businessId} not found`);
     }
 
-    // 2. Buscar precios de productos y calcular subtotales de ítems
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
         where: { id: item.productId },
@@ -56,85 +48,65 @@ export class OrderService {
 
       if (!product || product.businessId !== businessId) {
         throw new BadRequestException(
-          `Product ID ${item.productId} is invalid or does not belong to the business.`,
+          `Product ${item.productId} is invalid for this business`,
         );
       }
 
-      const unitPrice = product.price;
-      const itemTotal = unitPrice * item.quantity;
+      const itemTotal = product.price * item.quantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
-        productId: item.productId,
+        product: { connect: { id: item.productId } },
         quantity: item.quantity,
-        unitPrice: unitPrice,
+        unitPrice: product.price,
         total: itemTotal,
-        note: item.note,
+        note: item.note ?? null,
       });
     }
 
-    // 3. Aplicar impuestos
-    const taxRate = business.taxRate / 100;
-    const tax = subtotal * taxRate;
+    const tax = subtotal * (business.taxRate / 100);
     const total = subtotal + tax;
 
     return { subtotal, tax, total, orderItemsData };
   }
 
-  async findOne(
-    where: Prisma.OrderWhereInput,
-    include: Prisma.OrderInclude,
-  ): Promise<Order | null> {
-    try {
-      return await this.prisma.order.findFirst({
-        where,
-        include,
-      });
-    } catch (e) {
-      console.error(e);
-      throw new InternalServerErrorException(e);
-    }
+  /* =========================
+     QUERIES
+  ========================= */
+
+  findOne(args: Prisma.OrderFindFirstArgs) {
+    return this.prisma.order.findFirst(args);
   }
 
-  async findAll(where: Prisma.OrderWhereInput, include: Prisma.OrderInclude) {
-    try {
-      return await this.prisma.order.findMany({
-        where,
-        include,
-      });
-    } catch (e) {
-      console.error(e);
-      throw new InternalServerErrorException(e);
-    }
+  findAll(args: Prisma.OrderFindManyArgs) {
+    return this.prisma.order.findMany(args);
   }
-  // 1. CREAR PEDIDO (Mutación: createOrder)
-  /**
-   * Crea un nuevo pedido con sus ítems asociados.
-   * @param input Datos del pedido, incluyendo items.
-   * @returns El objeto Order recién creado.
-   */
-  async create(input: CreateOrderInput, businessId: string): Promise<Order> {
+
+  /* =========================
+     MUTATIONS
+  ========================= */
+
+  /** Crear orden con items e historial */
+  async create(input: CreateOrderInput, businessId: string) {
     const { subtotal, tax, total, orderItemsData } =
       await this.calculateOrderTotals(businessId, input.items);
 
-    // El pedido inicia en estado 'Pending'
-    const newOrder = await this.prisma.order.create({
+    return this.prisma.order.create({
       data: {
-        tableId: input.tableId,
+        businessId,
+        tableId: input.tableId ?? null,
         userId: input.userId,
         status: 'Pending',
-        subtotal: subtotal,
-        tax: tax,
-        total: total + input.tip - input.discount, // Total final con propina y descuento
-        tip: input.tip,
-        discount: input.discount,
+        subtotal,
+        tax,
+        tip: input.tip ?? 0,
+        discount: input.discount ?? 0,
+        total: total + (input.tip ?? 0) - (input.discount ?? 0),
 
-        // Crea los OrderItems en la misma transacción
         items: {
           create: orderItemsData,
         },
 
-        // Crea un historial de orden inicial
         histories: {
           create: {
             userId: input.userId,
@@ -143,79 +115,117 @@ export class OrderService {
           },
         },
       },
-      include: { items: true }, // Retorna el pedido con sus ítems
+      include: {
+        items: true,
+      },
     });
-
-    return newOrder;
   }
 
-  // 2. ACTUALIZAR ESTADO DE PEDIDO (Mutación: updateOrderStatus)
-  /**
-   * Cambia el estado de un pedido y registra el cambio en el historial.
-   * @param input ID del pedido, nuevo estado y ID del usuario que lo cambia.
-   * @returns El objeto Order actualizado.
-   */
-  async updateStatus(input: UpdateOrderStatusInput): Promise<Order> {
-    const { id, newStatus, userId } = input;
+  /** Actualizar estado de orden con historial */
+  async updateStatus(input: UpdateOrderStatusInput) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: input.id },
+    });
 
-    // 1. Obtener estado actual
-    const currentOrder = await this.prisma.order.findUnique({ where: { id } });
-
-    if (!currentOrder) {
-      throw new NotFoundException(`Order with ID ${id} not found.`);
+    if (!order) {
+      throw new NotFoundException(`Order ${input.id} not found`);
     }
 
-    // 2. Actualizar estado y crear registro de historial en una sola transacción
-    const updatedOrder = await this.prisma.$transaction(async (prisma) => {
-      // A. Actualizar el estado del pedido
-      const order = await prisma.order.update({
-        where: { id: id },
+    return this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: input.id },
         data: {
-          status: newStatus,
-          updatedAt: new Date(),
+          status: input.newStatus,
         },
         include: {
           items: true,
         },
       });
 
-      // B. Registrar el cambio en el historial
-      await prisma.orderHistory.create({
+      await tx.orderHistory.create({
         data: {
-          orderId: id,
-          userId: userId,
-          previousStatus: currentOrder.status,
-          newStatus: newStatus,
+          orderId: input.id,
+          userId: input.userId,
+          previousStatus: order.status,
+          newStatus: input.newStatus,
         },
       });
 
-      return order;
+      return updatedOrder;
     });
-
-    return updatedOrder;
   }
 
-  // 3. ELIMINAR PEDIDO (Mutación: deleteOrder)
-  /**
-   * Elimina un pedido por su ID.
-   * @param id ID del pedido (String).
-   * @returns true si la eliminación fue exitosa.
-   */
+  /** Eliminar orden completa */
   async delete(id: string): Promise<boolean> {
     try {
-      // La eliminación debe ser en cascada: primero ítems e historial
       await this.prisma.$transaction([
         this.prisma.orderItem.deleteMany({ where: { orderId: id } }),
         this.prisma.orderHistory.deleteMany({ where: { orderId: id } }),
-        this.prisma.order.delete({ where: { id: id } }),
+        this.prisma.order.delete({ where: { id } }),
       ]);
-
       return true;
-    } catch (error) {
-      if (error.code === 'P2025') {
-        return false;
-      }
-      throw error;
+    } catch (e: any) {
+      if (e.code === 'P2025') return false;
+      throw e;
     }
+  }
+
+  /** Actualizar items de una orden existente */
+  async updateItems(
+    orderId: string,
+    items: { productId: string; quantity: number; price?: number; note?: string }[],
+  ) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) return null;
+
+    await this.prisma.orderItem.deleteMany({ where: { orderId } });
+
+    const createdItems = await this.prisma.orderItem.createMany({
+      data: items.map((i) => ({
+        orderId,
+        productId: i.productId,
+        quantity: i.quantity,
+        unitPrice: i.price ?? 0,
+        total: (i.price ?? 0) * i.quantity,
+        note: i.note ?? null,
+      })),
+    });
+
+    return this.prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+  }
+
+  /** Crear venta por todas las órdenes pendientes de una mesa */
+  async createSaleFromTableOrders(params: { tableId: string; businessId: string; userId: string }) {
+    const orders = await this.prisma.order.findMany({
+      where: { tableId: params.tableId, status: 'Pending' },
+    });
+
+    if (!orders.length) throw new NotFoundException('No hay órdenes pendientes en la mesa');
+
+    const subtotal = orders.reduce((acc, o) => acc + o.total, 0);
+
+    return this.prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.create({
+        data: {
+          businessId: params.businessId,
+          userId: params.userId,
+          status: 'paid',
+          subtotal,
+          tax: 0,
+          discount: 0,
+          tip: 0,
+          total: subtotal,
+          tableId: params.tableId,
+          closedAt: new Date(),
+        },
+      });
+
+      await tx.order.updateMany({
+        where: { tableId: params.tableId, status: 'Pending' },
+        data: { status: 'CLOSED', saleId: sale.id },
+      });
+
+      return sale.id;
+    });
   }
 }

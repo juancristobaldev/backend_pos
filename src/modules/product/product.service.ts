@@ -12,6 +12,7 @@ import {
   Product,
   CreateProductInput,
   UpdateProductInput,
+  OutputProduct,
 } from '../../entitys/product.entity';
 
 @Injectable()
@@ -32,7 +33,7 @@ export class ProductService {
 
   async findOne(
     where: Prisma.ProductWhereInput,
-    include: Prisma.ProductInclude,
+    include?: Prisma.ProductInclude,
   ): Promise<Product | null> {
     try {
       const newProduct = await this.prisma.product.findFirst({
@@ -51,9 +52,25 @@ export class ProductService {
    * @param input Los datos del producto, incluyendo businessId.
    * @returns El objeto Product recién creado.
    */
-  async create(input: CreateProductInput): Promise<Product> {
+  async create(input: CreateProductInput): Promise<OutputProduct> {
     const { businessId, name, description, price, available, category } = input;
 
+    const product = await this.prisma.product.findFirst({
+      where:{
+        AND:[
+          {
+            name,category
+          },{
+            businessId
+          }
+        ]
+      }
+    })
+
+    if(product) return {
+      errors:'ALREADY EXIST',
+      success:true
+    }
     const newProduct = await this.prisma.product.create({
       data: {
         businessId,
@@ -65,7 +82,10 @@ export class ProductService {
       },
     });
 
-    return newProduct;
+    return {
+      success:true,
+      product:newProduct
+    };
   }
 
   // 2. ACTUALIZAR PRODUCTO (Mutación: updateProduct)

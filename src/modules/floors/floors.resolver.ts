@@ -15,6 +15,7 @@ import {
 } from 'src/entitys/floor.entity';
 import { Table } from 'src/entitys/table.entity';
 import { FloorService } from './floors.service';
+import { Business } from 'src/entitys/business.entity';
 
 @Resolver(() => Floor)
 export class FloorsResolver {
@@ -24,11 +25,16 @@ export class FloorsResolver {
   // MUTATIONS (Lo que pediste)
   // ==================================================
 
-  @Mutation(() => Floor)
+  @Mutation(() => Business)
   async createFloor(
     @Args('createFloorInput') createFloorInput: CreateFloorInput,
   ) {
-    return this.floorService.create(createFloorInput);
+    const floor = await this.floorService.create(createFloorInput);
+
+    return {
+      id:createFloorInput.businessId,
+      floors:[floor]
+    }
   }
 
   @Mutation(() => Floor)
@@ -43,6 +49,13 @@ export class FloorsResolver {
     @Args('deleteFloorInput') deleteFloorInput: DeleteFloorInput,
   ) {
     return this.floorService.remove(deleteFloorInput.id);
+  }
+
+  @Query(() => [Floor])
+  async getFloors(
+    @Args('businessId') businessId: string,
+  ) {
+    return this.floorService.getFloorsByBusinessId(businessId);
   }
 
   // ==================================================

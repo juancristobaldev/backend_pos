@@ -91,6 +91,21 @@ export class BusinessService {
   }
 
   // --- Consulta de ejemplo (Query, útil para el Resolver) ---
+
+  async find(
+    where: Prisma.BusinessWhereInput,
+    include?: Prisma.BusinessInclude | {},
+  ): Promise<Business | null> {
+    const business = await this.prisma.business.findFirst({
+      where: where,
+      include: { floors: true, ...include },
+    });
+    if (business) {
+      return { ...business, theme: '' };
+    }
+    return null;
+  }
+
   async findOne(
     id: string,
     include?: Prisma.BusinessInclude | {},

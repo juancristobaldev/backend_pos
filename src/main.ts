@@ -5,7 +5,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'http://localhost:3000', // o las URLs que uses
+    origin: ['http://localhost:3000','http://localhost:3001'], // o las URLs que uses
     methods: 'GET,POST,PUT,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization, x-apollo-operation-name',
   });

@@ -1,44 +1,64 @@
 import { ObjectType, Field, InputType, ID, Float, Int } from '@nestjs/graphql';
-import { Table as PrismaTable } from '@prisma/client';
+import { Order } from './order.entity';
+
+
 
 // =========================================================
 // 1. OUTPUT TYPE (La Entidad 'Table')
 // =========================================================
 @ObjectType()
-export class Table implements PrismaTable {
+export class Table {
   @Field(() => ID)
   id: string;
 
-  @Field(() => ID)
-  floorId: string;
+  @Field(() => ID,{nullable:true})
+  floorId?: string;
 
   @Field()
-  name: string;
+  name?: string;
 
-  @Field(() => Float)
-  coordX: number;
+  @Field(() => Float,{nullable:true})
+  coordX?: number;
 
-  @Field(() => Float)
-  coordY: number;
+  @Field(() => Float,{nullable:true})
+  coordY?: number;
 
-  @Field(() => Int)
-  capacity: number;
+  @Field(() => Int,{nullable:true})
+  capacity?: number;
 
-  @Field()
-  status: string;
+  @Field({nullable:true})
+  status?: string;
 
-  @Field()
-  shape: string;
+  @Field({nullable:true})
+  shape?: string;
 
-  @Field()
-  color: string;
+  @Field({nullable:true})
+  color?: string;
 
-  @Field()
-  createdAt: Date;
+  @Field({nullable:true})
+  createdAt?: Date;
 
-  @Field()
-  updatedAt: Date;
+  @Field({nullable:true})
+  updatedAt?: Date;
+
+  @Field(() => [Order],{nullable:true})
+  orders?: Order[];
+
+  @Field({nullable:true})
+  hasActiveOrder?:boolean;
 }
+
+
+// entitys/table.entity.ts
+@InputType()
+export class ChangeTableStatusInput {
+  @Field(() => ID)
+  tableId: string;
+
+  @Field()
+  newStatus: string;
+}
+
 
 // =========================================================
 // 2. INPUT TYPES (Estructuras de Entrada)
@@ -148,6 +168,12 @@ export class UpdateTableInputArr {
   // El ID es OBLIGATORIO para saber qué mesa actualizar
   @Field()
   id: string;
+  @Field()
+  coordX: number;
+  @Field()
+  coordY: number;
+  @Field()
+  name: string;
 }
 
 // 3. Input Principal: La mutación que recibirá el Controller

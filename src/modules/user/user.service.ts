@@ -1,83 +1,118 @@
 // user.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserInput, UpdateUserInput } from 'src/entitys/user.entity';
+import {
+  CreateUserInput,
+  UpdateUserInput,
+  EmployeeStatus,
+  User as GraphqlUser,
+  User,
+  OutputUser,
+} from 'src/entitys/user.entity';
+import { User as PrismaUser } from '@prisma/client';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async findAllByBusiness(businessId: string): Promise<User[]> {
-    return this.prisma.user.findMany({
+  /* --------------------------------------------------------
+   * Mapper Prisma → GraphQL
+   * -------------------------------------------------------- */
+  private mapUser(user: PrismaUser): GraphqlUser {
+    return {
+      ...user,
+      status: user.status as EmployeeStatus,
+    };
+  }
+
+
+  async findOne(userId: string): Promise<OutputUser> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+  
+      if (!user) {
+        return {
+          success: false,
+          errors: 'NOT FOUND',
+        };
+      }
+  
+      return {
+        success: true,
+        user: {
+          ...user,
+          status: user.status as EmployeeStatus,
+        },
+      };
+    } catch (e) {
+      console.error(e);
+  
+      return {
+        success: false,
+        errors: 'INTERNAL SERVER ERROR',
+      };
+    }
+  }
+  
+  /* --------------------------------------------------------
+   * Obtener usuarios por negocio
+   * -------------------------------------------------------- */
+  async findAllByBusiness(businessId: string): Promise<GraphqlUser[]> {
+    const users = await this.prisma.user.findMany({
       where: {
-        businessId: businessId, // Filtramos estrictamente por el negocio
-        // Opcional: Puedes excluir al Administrador Principal o filtrar por estado 'active'
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        lastLogin: true,
-        businessId: true,
-        password: true,
-        updatedAt: true,
-        createdAt: true,
-        // No seleccionar 'password' por seguridad
+        businessId,
       },
       orderBy: {
         name: 'asc',
       },
     });
+
+    return users.map((user) => this.mapUser(user));
   }
 
-  // 1. CREAR USUARIO (Mutación: createUser)
-  // Utiliza 'data' para el objeto de creación, incluyendo la relación 'business'
-  async create(input: CreateUserInput): Promise<User> {
+  /* --------------------------------------------------------
+   * Crear usuario
+   * -------------------------------------------------------- */
+  async create(input: CreateUserInput): Promise<GraphqlUser> {
     const { businessId, name, email, password, role } = input;
-
-    // NOTA: Se asume que 'status' tiene un valor predeterminado o se manejará aparte.
-    // Aquí usamos un valor de ejemplo 'Active'.
 
     const newUser = await this.prisma.user.create({
       data: {
-        businessId, // Se enlaza con el Business
+        businessId,
         name,
         email,
         password,
         role,
-        status: 'Active',
+        status: EmployeeStatus.ACTIVE, // 👈 estado por defecto
       },
-      // Puedes incluir el negocio y otras relaciones si es necesario devolverlas
-      // include: { business: true },
     });
 
-    return newUser;
+    return this.mapUser(newUser);
   }
 
-  // 2. ACTUALIZAR USUARIO (Mutación: updateUser)
-  // Actualiza un usuario por su ID
-  async update(id: string, input: UpdateUserInput): Promise<User> {
+  /* --------------------------------------------------------
+   * Actualizar usuario
+   * -------------------------------------------------------- */
+  async update(
+    id: string,
+    input: UpdateUserInput,
+  ): Promise<GraphqlUser> {
     try {
-      // Usamos 'update' y especificamos el ID en 'where'
       const updatedUser = await this.prisma.user.update({
-        where: { id: id },
+        where: { id },
         data: {
-          // Utiliza la sintaxis de Prisma para actualizar solo los campos presentes en el input
           name: input.name,
           email: input.email,
           password: input.password,
           role: input.role,
           status: input.status,
-          // 'businessId' generalmente no se actualiza, pero se podría añadir si es necesario.
         },
       });
-      return updatedUser;
-    } catch (error) {
-      // Manejar el caso donde el usuario no se encuentra (código P2025 de Prisma)
+
+      return this.mapUser(updatedUser);
+    } catch (error: any) {
       if (error.code === 'P2025') {
         throw new NotFoundException(`User with ID ${id} not found.`);
       }
@@ -85,17 +120,17 @@ export class UserService {
     }
   }
 
-  // 3. ELIMINAR USUARIO (Mutación: deleteUser)
-  // Elimina un usuario por su ID
+  /* --------------------------------------------------------
+   * Eliminar usuario
+   * -------------------------------------------------------- */
   async delete(id: string): Promise<boolean> {
     try {
       await this.prisma.user.delete({
-        where: { id: id },
+        where: { id },
       });
-      return true; // Eliminación exitosa
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       if (error.code === 'P2025') {
-        // El usuario ya no existe o nunca existió
         return false;
       }
       throw error;

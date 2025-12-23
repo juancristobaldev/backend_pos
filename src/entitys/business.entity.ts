@@ -44,6 +44,8 @@ export class Business {
   status: string;
 }
 
+
+
 // 2. INPUT PARA CREACIÓN
 @InputType()
 export class CreateBusinessInput {
@@ -55,15 +57,6 @@ export class CreateBusinessInput {
 
   @Field()
   phone: string;
-
-  @Field() // Agrego currency y taxRate que son obligatorios en tu Schema [cite: 213, 214]
-  currency: string;
-
-  @Field(() => Float)
-  taxRate: number;
-
-  @Field(() => Int)
-  maxTables: number;
 
   @Field(() => String, { nullable: true })
   theme?: string | null;

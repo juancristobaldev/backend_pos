@@ -1,13 +1,3 @@
-
-
-// ... (Client se mantiene igual)
-
-
-
-// NUEVO MODELO: PLANO / PISO
-
-
-// ... (El resto de modelos: User, Product, Order, etc. se mantienen igual)
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,189 +8,267 @@ datasource db {
 }
 
 model Client {
-  id               String     @id @default(uuid())
-  name             String
-  email            String     @unique
-  password         String
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  status           String
-  businesses       Business[]
+  id                String             @id @default(uuid())
+  name              String
+  email             String             @unique
+  password          String
+  status            String
+
+  businesses        Business[]
+  subscriptions     Subscription[]
+  subscriptionSales SubscriptionSale[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
-
-
-
-model User {
-  id               String        @id @default(uuid())
-  businessId       String
-  name             String
-  email            String        @unique
-  password         String
-  role             String
-  lastLogin        DateTime?
-  status           String
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  business         Business      @relation(fields: [businessId], references: [id])
-  orders           Order[]
-  orderHistories   OrderHistory[]
-  chats            Chat[]        @relation("ChatSender")
-}
-
-// ... (Client se mantiene igual)
 
 model Business {
-  id               String        @id @default(uuid())
-  clientId         String
-  name             String
-  address          String
-  phone            String
-  currency         String
-  taxRate          Float
-  maxTables        Int
-  theme            String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  status           String
+  id            String        @id @default(uuid())
+  clientId      String
+  name          String
+  address       String
+  phone         String
+  currency      String
+  taxRate       Float
+  maxTables     Int
+  theme         String?
+  status        String
+
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  users         User[]
+  floors        Floor[]
+  products      Product[]
+  orders        Order[]
+  sales         Sale[]
   
-  client           Client        @relation(fields: [clientId], references: [id])
-  users            User[]
-  
-  // CAMBIO AQUÍ: El negocio ahora tiene 'floors' (Planos/Pisos)
-  floors           Floor[]       
-  
-  // Eliminamos 'tables Table[]' directo
-  products         Product[]
-  chats            Chat[]
-  notifications    Notification[]
+  chats         Chat[]
+  notifications Notification[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
-// NUEVO MODELO: PLANO / PISO
+model PaymentIntent {
+  id           String   @id @default(uuid())
+
+  orderId      String?  @unique
+
+  amount       Int
+  status       String
+
+  token        String?
+  buyOrder     String
+  sessionId    String
+  returnUrl    String
+
+  type         String
+  referenceId  String
+  clientEmail  String
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model User {
+  id         String      @id @default(uuid())
+  businessId String
+  name       String
+  email      String      @unique
+  password   String
+  role       String
+  status     String
+  lastLogin  DateTime?
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders     Order[]
+  sales      Sale[]
+  histories  OrderHistory[]
+  chats      Chat[]      @relation("ChatSender")
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
 model Floor {
-  id               String        @id @default(uuid())
-  businessId       String
-  name             String        // Ej: "Terraza", "Salón Principal"
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  
-  // Relaciones
-  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  tables           Table[]       // Un plano tiene muchas mesas
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tables     Table[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Table {
-  id               String        @id @default(uuid())
-  
-  // CAMBIO AQUÍ: Ahora se vincula al Floor, no al Business
-  floorId          String        
-  
-  name             String
-  coordX           Float
-  coordY           Float
-  capacity         Int
-  status           String
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  shape        String        // Ej: "circle", "rectangle" 
-  color      String        // Ej: "#FF5733"
-  // Relación con Floor
-  floor            Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  
-  // Se elimina la relación directa con Business
-  // businessId    String  <-- Eliminado
-  // business      Business <-- Eliminado
-  
-  orders           Order[]
+  id        String   @id @default(uuid())
+  floorId   String
+  name      String
+  coordX    Float
+  coordY    Float
+  capacity  Int
+  status    String
+  shape     String
+  color     String
+
+  sale Sale[]
+  orders Order[]
+
+  floor     Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Product {
-  id               String        @id @default(uuid())
-  businessId       String
-  name             String
-  description      String
-  price            Float
-  available        Boolean
-  category         String
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  business         Business      @relation(fields: [businessId], references: [id])
-  orderItems       OrderItem[]
+  id          String      @id @default(uuid())
+  businessId  String
+  name        String
+  description String
+  price       Int
+  available   Boolean
+  category    String
+
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Order {
-  id               String        @id @default(uuid())
-  tableId          String
-  userId           String
-  status           String
-  subtotal         Float
-  tax              Float
-  total            Float
-  tip              Float
-  discount         Float
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id         String   @id @default(uuid())
+  clientEmail String?
+  businessId String
+  userId     String
+  tableId    String?
+  saleId     String? 
+  status     String
+  subtotal   Int
+  tax        Int
+  discount   Int      @default(0)
+  tip        Int      @default(0)
+  total      Int
 
-  table            Table         @relation(fields: [tableId], references: [id])
-  user             User          @relation(fields: [userId], references: [id])
-  items            OrderItem[]
-  histories        OrderHistory[]
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  table      Table?   @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  sale       Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  items      OrderItem[]
+  histories  OrderHistory[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model OrderItem {
-  id               String        @id @default(uuid())
-  orderId          String
-  productId        String
-  quantity         Int
-  unitPrice        Float
-  total            Float
-  note             String?
+  id         String  @id @default(uuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  unitPrice  Int
+  total      Int
+  note       String?
 
-  order            Order         @relation(fields: [orderId], references: [id])
-  product          Product       @relation(fields: [productId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model OrderHistory {
-  id               String        @id @default(uuid())
-  orderId          String
-  previousStatus   String
-  newStatus        String
-  userId           String
-  changedAt        DateTime      @default(now())
+  id             String   @id @default(uuid())
+  orderId        String
+  userId         String
+  previousStatus String
+  newStatus      String
+  changedAt      DateTime @default(now())
 
-  order            Order         @relation(fields: [orderId], references: [id])
-  user             User          @relation(fields: [userId], references: [id])
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  businessId  String
+  userId      String
+  order       Order[]
+  clientEmail String?
+  status      String
+
+  subtotal    Int
+  tax         Int
+  discount    Int
+  tip         Int
+  total       Int
+
+  tableId     String
+  table       Table   @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  clientId    String
+  status      String
+  price       Int
+  interval    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sales       SubscriptionSale[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SubscriptionSale {
+  id              String   @id @default(uuid())
+  subscriptionId  String
+  clientId        String
+  amount          Int
+  status          String
+
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  client          Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
 }
 
 model Chat {
-  id               String        @id @default(uuid())
-  businessId       String
-  senderId         String
-  message          String
-  type             String
-  sentAt           DateTime      @default(now())
-  read             Boolean       @default(false)
+  id         String   @id @default(uuid())
+  businessId String
+  senderId   String
+  message    String
+  type       String
+  read       Boolean  @default(false)
 
-  business         Business      @relation(fields: [businessId], references: [id])
-  sender           User          @relation("ChatSender", fields: [senderId], references: [id])
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sender     User     @relation("ChatSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  sentAt     DateTime @default(now())
 }
 
 model Notification {
-  id               String        @id @default(uuid())
-  businessId       String
-  type             String
-  message          String
-  createdAt        DateTime      @default(now())
-  read             Boolean       @default(false)
+  id         String   @id @default(uuid())
+  businessId String
+  type       String
+  message    String
+  read       Boolean  @default(false)
 
-  business         Business      @relation(fields: [businessId], references: [id])
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
 }
 
 model SyncLog {
-  id               String        @id @default(uuid())
-  entity           String
-  entityId         String
-  operation        String
-  dataJson         String
-  createdAt        DateTime      @default(now())
+  id        String   @id @default(uuid())
+  entity    String
+  entityId  String
+  operation String
+  dataJson  String
+
+  createdAt DateTime @default(now())
 }

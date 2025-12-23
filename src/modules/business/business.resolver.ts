@@ -13,6 +13,7 @@ import { Role, Roles } from 'src/common/decorators/roles.decorators';
 import { RoleGuard } from 'src/guards/auth/auth.guard';
 import { User } from 'src/entitys/user.entity';
 import { UserService } from '../user/user.service';
+import { OutputClient } from 'src/entitys/client.entity';
 
 @Resolver(() => Business)
 export class BusinessResolver {
@@ -20,14 +21,39 @@ export class BusinessResolver {
 
   @UseGuards(RoleGuard) // ✔ luego el Guard
   @Roles(Role.Administrator) // ✔ primero Roles
-  @Mutation(() => Business, { name: 'createBusiness' })
+  @Mutation(() => OutputClient, { name: 'createBusiness' })
   async createBusiness(
     @Args('input') input: CreateBusinessInput,
     @Context() ctx: any,
-  ): Promise<Business> {
+  ): Promise<OutputClient> {
     const user = ctx.user;
 
-    return this.businessService.create(input, user.id);
+    const businessSameName = await this.businessService.find({
+
+      AND:[
+        {
+          clientId:user.id
+        },{ name:input.name}
+      ]
+      
+    })
+
+    if(businessSameName) return {
+      errors:'BUSSINESS SAME NAME',
+      success:false
+    }
+
+    const bussiness = await  this.businessService.create(input, user.id);
+    
+    return {
+      success:true,
+    client:{
+      id:user.id,
+      businesses:[
+        bussiness
+      ]
+    }
+    }
   }
 
   // 2. MUTACIÓN: ACTUALIZAR NEGOCIO

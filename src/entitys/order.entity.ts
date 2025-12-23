@@ -1,19 +1,35 @@
-// order.entity.ts
+import { ObjectType, Field, ID, Float, Int, InputType } from '@nestjs/graphql';
+import { Product } from './product.entity';
 
-import { ObjectType, Field, InputType, ID, Float, Int } from '@nestjs/graphql';
-import {
-  Order as PrismaOrder,
-  OrderItem as PrismaOrderItem,
-} from '@prisma/client';
+/* =========================
+   OUTPUT TYPES
+========================= */
 
-// =========================================================
-// 1. OUTPUT TYPES (Entities)
-// =========================================================
 
-// --- OrderItem Entity ---
-// --- OrderItem Entity ---
+
+@InputType()
+export class UpdateOrderItemsInput {
+  @Field(() => ID)
+  orderId: string;
+
+  @Field(() => [OrderItemInput])
+  items: OrderItemInput[];
+}
+
+@InputType()
+export class OrderItemInput {
+  @Field(() => ID)
+  productId: string;
+
+  @Field()
+  quantity: number;
+
+  @Field(() => Number, { nullable: true })
+  price?: number;
+}
+
 @ObjectType()
-export class OrderItem implements PrismaOrderItem {
+export class OrderItem {
   @Field(() => ID)
   id: string;
 
@@ -22,6 +38,8 @@ export class OrderItem implements PrismaOrderItem {
 
   @Field(() => ID)
   productId: string;
+  @Field(() => Product,{nullable:true})
+  product?: Product;
 
   @Field(() => Int)
   quantity: number;
@@ -32,19 +50,18 @@ export class OrderItem implements PrismaOrderItem {
   @Field(() => Float)
   total: number;
 
-  // ¡SOLUCIÓN APLICADA! Se añade explícitamente el tipo String.
   @Field(() => String, { nullable: true })
   note: string | null;
 }
 
-// --- Order Entity ---
 @ObjectType()
-export class Order implements PrismaOrder {
+export class Order {
   @Field(() => ID)
   id: string;
 
-  @Field(() => ID)
-  tableId: string;
+  // Prisma => string | null
+  @Field(() => ID, { nullable: true })
+  tableId: string | null;
 
   @Field(() => ID)
   userId: string;
@@ -59,32 +76,36 @@ export class Order implements PrismaOrder {
   tax: number;
 
   @Field(() => Float)
-  total: number;
+  discount: number;
 
   @Field(() => Float)
   tip: number;
 
   @Field(() => Float)
-  discount: number;
+  total: number;
+
+  // Prisma => string | null
+  @Field(() => String, { nullable: true })
+  clientEmail: string | null;
+
+  // Prisma => string | null
+  @Field(() => ID, { nullable: true })
+  saleId: string | null;
+
+  @Field(() => [OrderItem],{nullable:true})
+  items?: OrderItem[];
 
   @Field()
   createdAt: Date;
 
   @Field()
   updatedAt: Date;
-
-  // Relación: Incluimos los ítems del pedido como un array de OrderItem
-  @Field(() => [OrderItem])
-  items: OrderItem[];
-
-  // Nota: Otras relaciones (table, user, histories) se añadirían con @ResolveField
 }
 
-// =========================================================
-// 2. INPUT TYPES (Mutations)
-// =========================================================
+/* =========================
+   INPUT TYPES
+========================= */
 
-// --- Input para la creación de un ítem dentro de un pedido ---
 @InputType()
 export class CreateOrderItemInput {
   @Field(() => ID)
@@ -97,14 +118,13 @@ export class CreateOrderItemInput {
   note?: string;
 }
 
-// --- Input para la creación del pedido principal ---
 @InputType()
 export class CreateOrderInput {
   @Field(() => ID)
-  tableId: string; // Mesa asignada
+  tableId: string;
 
   @Field(() => ID)
-  userId: string; // Usuario (empleado) que toma el pedido
+  userId: string;
 
   @Field(() => Float, { defaultValue: 0 })
   tip: number;
@@ -112,25 +132,22 @@ export class CreateOrderInput {
   @Field(() => Float, { defaultValue: 0 })
   discount: number;
 
-  // Array de ítems para crear
   @Field(() => [CreateOrderItemInput])
   items: CreateOrderItemInput[];
 }
 
-// --- Input para actualizar el estado del pedido ---
 @InputType()
 export class UpdateOrderStatusInput {
   @Field(() => ID)
-  id: string; // ID del pedido a actualizar
+  id: string;
 
   @Field()
-  newStatus: string; // Nuevo estado (e.g., 'Completed', 'Canceled')
+  newStatus: string;
 
   @Field(() => ID)
-  userId: string; // ID del usuario que realiza el cambio de estado (para el historial)
+  userId: string;
 }
 
-// --- Input para eliminar el pedido ---
 @InputType()
 export class DeleteOrderInput {
   @Field(() => ID)

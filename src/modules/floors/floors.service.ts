@@ -36,11 +36,51 @@ export class FloorService {
       where: { id },
     });
   }
+  async getFloorsByBusinessId(id: string) {
+    const floors = await this.prisma.floor.findMany({
+      where: { businessId:id },
+      include:{
+        tables:{
+          include:{
+            orders:{
+              include:{
+                items:{
+                  include:{
+                    product:true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    floors.forEach((floor) => {
+
+      floor.tables.forEach((table) => {
+     table.orders.forEach((order) => {console.log(order)})
+      })
+    })
+
+    return floors
+  }
 
   // Helper para ResolveField: Obtener mesas de un piso
   async getTablesByFloorId(floorId: string) {
     return this.prisma.table.findMany({
       where: { floorId },
+      include:{
+        orders:{
+          include:{
+            items:{
+              include:{
+                product:true
+              }
+            }
+          }
+        }
+      }
     });
   }
 }

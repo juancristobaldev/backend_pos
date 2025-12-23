@@ -7,6 +7,7 @@ import {
   CreateProductInput,
   UpdateProductInput,
   DeleteProductInput,
+  OutputProduct,
 } from '../../entitys/product.entity';
 import { NotFoundException } from '@nestjs/common';
 
@@ -14,11 +15,12 @@ import { NotFoundException } from '@nestjs/common';
 export class ProductResolver {
   constructor(private readonly productService: ProductService) {}
 
-  @Mutation(() => Product, { name: 'createProduct' })
+  @Mutation(() => OutputProduct, { name: 'createProduct' })
   async createProduct(
     @Args('input') input: CreateProductInput,
-  ): Promise<Product> {
-    return this.productService.create(input);
+  ): Promise<OutputProduct> {
+    return await this.productService.create(input);
+    
   }
 
   @Mutation(() => Product, { name: 'updateProduct' })

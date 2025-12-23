@@ -16,6 +16,12 @@ import { BusinessModule } from './modules/business/business.module';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { FloorsModule } from './modules/floors/floors.module';
 import { FloorService } from './modules/floors/floors.service';
+import { join } from 'path';
+import { KpiModule } from './modules/kpi/kpi.module';
+import { SalesModule } from './modules/sales/sales.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   controllers: [AppController],
@@ -25,13 +31,13 @@ import { FloorService } from './modules/floors/floors.service';
       isGlobal: true, // hace que ConfigService sea global
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver: ApolloDriver, // Usar ApolloDriver
-      autoSchemaFile: 'schema.gql',
-      context: ({ req }) => ({
-        authorization: req.headers.authorization,
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'schema.gql'),
+      sortSchema: true,
+      context: ({ req, res }) => ({
         req,
+        res, // 🔴 CLAVE
       }),
-      // ... otras configuraciones
     }),
     JwtModule.register({
       global: true, // Hace que el JwtService esté disponible globalmente (opcional)
@@ -48,6 +54,11 @@ import { FloorService } from './modules/floors/floors.service';
     ProductModule,
     BusinessModule,
     FloorsModule,
+    KpiModule,
+    SalesModule,
+    NotificationModule,
+    ReviewsModule,
+    PaymentModule,
   ],
 })
 export class AppModule {}

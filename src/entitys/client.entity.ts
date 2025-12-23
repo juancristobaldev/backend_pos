@@ -5,31 +5,44 @@ import { Client as PrismaClient } from '@prisma/client';
 import { Business } from './business.entity';
 
 // OUTPUT TYPE (La entidad que se devuelve)
+
 @ObjectType()
-export class Client implements PrismaClient {
+export class Client   {
   @Field(() => ID)
   id: string;
 
-  @Field()
-  name: string;
+  @Field( { nullable: true })
+  name?: string;
+
+  @Field( { nullable: true })
+  email?: string;
 
   @Field()
-  email: string;
+  password?: string; // Nota: En producción se debe excluir de los Outputs reales
 
-  @Field()
-  password: string; // Nota: En producción, se debe excluir de los Outputs reales
+  @Field( { nullable: true })
+  createdAt?: Date;
 
-  @Field()
-  createdAt: Date;
+  @Field( { nullable: true })
+  updatedAt?: Date;
 
-  @Field()
-  updatedAt: Date;
-
-  @Field()
-  status: string;
+  @Field({ nullable: true })
+  status?: string;
   @Field(() => [Business], { nullable: true })
   businesses?: Business[];
 }
+
+@ObjectType()
+export class OutputClient  {
+  @Field(()=> Boolean)
+  success: boolean;
+  @Field({nullable:true})
+  errors?: string;
+  @Field(()=> Client,{nullable:true})
+  client?: Client;
+
+}
+
 
 // INPUT PARA CREACIÓN
 @InputType()
@@ -42,6 +55,8 @@ export class CreateClientInput {
 
   @Field()
   password: string;
+  @Field()
+  saleToken: string;
 }
 
 // INPUT PARA EDICIÓN

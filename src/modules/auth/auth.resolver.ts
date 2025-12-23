@@ -25,6 +25,7 @@ export class AuthResolver {
 
   @Mutation(() => AuthPayload, { name: 'loginUser' })
   async loginUser(@Args('input') input: AuthInput): Promise<AuthPayload> {
+    console.log(input)
     const tokenPayload = await this.authService.validateUser(input);
 
     return tokenPayload;

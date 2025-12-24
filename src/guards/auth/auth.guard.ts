@@ -22,15 +22,17 @@ export class RoleGuard implements CanActivate {
       context.getHandler(),
     );
 
-    // Si el resolver no tiene @Roles → permitir acceso
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     // Contexto GraphQL
     const ctx = GqlExecutionContext.create(context).getContext();
+    const req = ctx.req; // 🔴 CLAVE
 
-    let authHeader = ctx.authorization;
+    const authHeader = req.headers.authorization;
+
+    console.log(authHeader);
     if (!authHeader) {
       throw new UnauthorizedException('Token no encontrado');
     }
@@ -42,8 +44,9 @@ export class RoleGuard implements CanActivate {
     // Verificar token
     const payload = this.jwtService.verify(token);
 
-    // Guardar usuario en contexto global
-    ctx.user = payload;
+    console.log(payload);
+    // Guardar usuario en el request
+    req.user = payload;
 
     // Verificar rol
     return requiredRoles.includes(payload.role);

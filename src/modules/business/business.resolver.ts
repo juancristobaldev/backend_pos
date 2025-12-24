@@ -26,34 +26,32 @@ export class BusinessResolver {
     @Args('input') input: CreateBusinessInput,
     @Context() ctx: any,
   ): Promise<OutputClient> {
-    const user = ctx.user;
+    const user = ctx.req.user;
 
     const businessSameName = await this.businessService.find({
-
-      AND:[
+      AND: [
         {
-          clientId:user.id
-        },{ name:input.name}
-      ]
-      
-    })
+          clientId: user.id,
+        },
+        { name: input.name },
+      ],
+    });
 
-    if(businessSameName) return {
-      errors:'BUSSINESS SAME NAME',
-      success:false
-    }
+    if (businessSameName)
+      return {
+        errors: 'BUSSINESS SAME NAME',
+        success: false,
+      };
 
-    const bussiness = await  this.businessService.create(input, user.id);
-    
+    const bussiness = await this.businessService.create(input, user.id);
+
     return {
-      success:true,
-    client:{
-      id:user.id,
-      businesses:[
-        bussiness
-      ]
-    }
-    }
+      success: true,
+      client: {
+        id: user.id,
+        businesses: [bussiness],
+      },
+    };
   }
 
   // 2. MUTACIÓN: ACTUALIZAR NEGOCIO

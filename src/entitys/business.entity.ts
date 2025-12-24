@@ -44,8 +44,6 @@ export class Business {
   status: string;
 }
 
-
-
 // 2. INPUT PARA CREACIÓN
 @InputType()
 export class CreateBusinessInput {

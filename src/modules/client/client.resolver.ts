@@ -23,7 +23,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ClientResolver {
   constructor(
     private readonly clientService: ClientService,
-    private readonly prisma:PrismaService,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -32,28 +32,23 @@ export class ClientResolver {
   @Roles(Role.Administrator) // ✔ primero Roles
   @UseGuards(RoleGuard) // ✔ luego el Guard
   async getAuthenticatedClient(@Context() ctx: any) {
-    console.log(ctx, ctx.authorization);
-    const payload = this.jwtService.verify(ctx.authorization);
-    console.log(ctx, ctx.authorization);
-    if (!payload) throw new BadRequestException('Not token');
-
-    console.log(payload);
-    const userEmail = payload.email; // depende cómo generaste tu JWT
-
+    const user = ctx.req.user;
+    const userEmail = user.email;
+    console.log(userEmail);
     const client = await this.clientService.findByEmail(userEmail, {
       businesses: true,
     });
-
-
 
     return client;
   }
 
   @Mutation(() => OutputClient, { name: 'createClient' })
-  async createClient(@Args('input') input: CreateClientInput): Promise<OutputClient> {
-    const {name,email,password,saleToken} = input
-    
-    return this.clientService.create({name,email,password}, saleToken);
+  async createClient(
+    @Args('input') input: CreateClientInput,
+  ): Promise<OutputClient> {
+    const { name, email, password, saleToken } = input;
+
+    return this.clientService.create({ name, email, password }, saleToken);
   }
 
   // 2. MUTACIÓN: ACTUALIZAR CLIENTE
